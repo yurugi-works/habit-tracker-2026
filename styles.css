@@ -629,6 +629,100 @@ body {
 }
 
 /* ===================================
+   抱負一覧画面
+   =================================== */
+.resolutions-container {
+    display: grid;
+    gap: 16px;
+    padding-bottom: 24px;
+}
+
+.resolution-card {
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border-color);
+    transition: all 0.3s ease;
+}
+
+.resolution-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+}
+
+.resolution-card .card-header {
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.resolution-card .card-header .icon {
+    font-size: 1.5rem;
+}
+
+.resolution-card .card-header h3 {
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+.resolution-card .card-content {
+    padding: 16px;
+}
+
+.resolution-card .goal {
+    font-size: 1rem;
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px dashed var(--border-color);
+}
+
+.resolution-card .detail-list {
+    list-style: none;
+    padding: 0;
+}
+
+.resolution-card .detail-list li {
+    position: relative;
+    padding-left: 20px;
+    margin-bottom: 8px;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.resolution-card .detail-list li::before {
+    content: '•';
+    position: absolute;
+    left: 4px;
+    color: var(--accent-primary);
+    font-weight: bold;
+}
+
+/* カテゴリ別カラー */
+.resolution-card.career .card-header { background: linear-gradient(135deg, #e0f2fe, #f0f9ff); border-bottom-color: #bae6fd; }
+.resolution-card.career .card-header h3 { color: #0284c7; }
+
+.resolution-card.skills .card-header { background: linear-gradient(135deg, #fae8ff, #fdf4ff); border-bottom-color: #f0abfc; }
+.resolution-card.skills .card-header h3 { color: #aaa201; /* Fallback for yellow text visibility */ color: #d97706; } /* Adjusted for better contrast: Amber */
+
+.resolution-card.skills .card-header h3 { color: #a21caf; } /* Purple */
+
+.resolution-card.health .card-header { background: linear-gradient(135deg, #dcfce7, #f0fdf4); border-bottom-color: #86efac; }
+.resolution-card.health .card-header h3 { color: #15803d; }
+
+.resolution-card.hobby .card-header { background: linear-gradient(135deg, #fce7f3, #fdf2f8); border-bottom-color: #fca5a5; }
+.resolution-card.hobby .card-header h3 { color: #be185d; }
+
+.resolution-card.money .card-header { background: linear-gradient(135deg, #fef3c7, #fffbeb); border-bottom-color: #fde68a; }
+.resolution-card.money .card-header h3 { color: #b45309; }
+
+.resolution-card.relationship .card-header { background: linear-gradient(135deg, #ffedd5, #fff7ed); border-bottom-color: #fdba74; }
+.resolution-card.relationship .card-header h3 { color: #c2410c; }
+
+
+/* ===================================
    ローディングスピナー
    =================================== */
 #loader {
