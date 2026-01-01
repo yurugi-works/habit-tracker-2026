@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎍 2026年 習慣トラッカー</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- ヘッダー -->
+        <header class="app-header">
+            <h1>🎍 2026年 習慣トラッカー</h1>
+            <p class="subtitle">継続と成長 〜 小さな一歩を積み重ねる年 〜</p>
+        </header>
+
+        <!-- ナビゲーション -->
+        <nav class="nav-tabs">
+            <button class="nav-tab active" data-view="today">📅 今日</button>
+            <button class="nav-tab" data-view="history">📊 月間履歴</button>
+        </nav>
+
+        <!-- 今日のチェック画面 -->
+        <main id="today-view" class="view active">
+            <section class="date-section">
+                <button class="date-nav" id="prev-day">◀</button>
+                <h2 id="current-date">2026年1月1日（水）</h2>
+                <button class="date-nav" id="next-day">▶</button>
+            </section>
+
+            <!-- チェックリスト -->
+            <section class="checklist-section">
+                <h3>✅ 今日のチェックリスト</h3>
+                <div class="checklist" id="checklist">
+                    <!-- JSで生成 -->
+                </div>
+                <div class="progress-section">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progress-fill"></div>
+                    </div>
+                    <span class="progress-text" id="progress-text">達成率: 0%</span>
+                </div>
+            </section>
+
+            <!-- 今日の振り返り -->
+            <section class="reflection-section">
+                <h3>📝 今日の振り返り</h3>
+                <textarea id="reflection-text" placeholder="今日の振り返りを書いてください..."></textarea>
+                <button class="save-btn" id="save-reflection">💾 保存</button>
+            </section>
+        </main>
+
+        <!-- 月間履歴画面 -->
+        <main id="history-view" class="view">
+            <section class="month-nav-section">
+                <button class="month-nav" id="prev-month">◀</button>
+                <h2 id="current-month">2026年1月</h2>
+                <button class="month-nav" id="next-month">▶</button>
+            </section>
+
+            <!-- 月間カレンダー -->
+            <section class="calendar-section">
+                <div class="habit-legend" id="habit-legend">
+                    <!-- JSで生成 -->
+                </div>
+                <div class="calendar-grid" id="calendar-grid">
+                    <!-- JSで生成 -->
+                </div>
+            </section>
+
+            <!-- 月間統計 -->
+            <section class="stats-section">
+                <h3>📈 月間統計</h3>
+                <div class="stats-grid" id="stats-grid">
+                    <!-- JSで生成 -->
+                </div>
+            </section>
+
+            <!-- コメント一覧 -->
+            <section class="comments-section">
+                <h3>📝 今月の振り返り</h3>
+                <div class="comments-list" id="comments-list">
+                    <!-- JSで生成 -->
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
