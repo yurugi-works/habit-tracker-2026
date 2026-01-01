@@ -62,21 +62,32 @@ async function fetchAllData() {
     showLoading(true);
     try {
         const response = await fetch(API_URL);
-        const rawData = await response.json();
+        const json = await response.json();
 
-        // 日付キーの正規化 (Thu Jan 01 2026... -> 2026-01-01)
-        const normalizedData = {};
-        for (const [key, value] of Object.entries(rawData)) {
-            const date = new Date(key);
-            if (!isNaN(date.getTime())) {
-                const dateKey = getDateKey(date);
-                normalizedData[dateKey] = value;
-            }
+        // 新しいレスポンス形式 { records: {}, goals: [] } に対応
+        if (json.records) {
+            // 日付キーの正規化などの処理は records に対して行う
+            // (以前のロジックでは API から直接正規化されたキーが返る想定だったが、
+            //  念のためここでもチェックしてもよい。今回はシンプルに代入)
+            cachedData = json.records;
+
+            // 目標データのレンダリング
+            const goals = json.goals || [];
+            renderResolutions(goals);
+        } else {
+            // 旧形式のフォールバック
+            cachedData = json;
         }
 
-        cachedData = normalizedData;
         isDataLoaded = true;
         console.log('Data loaded:', cachedData);
+
+        // UI更新
+        renderToday();
+        renderCalendar();
+        renderStats();
+        renderComments();
+
         return cachedData;
     } catch (error) {
         console.error('Error fetching data:', error);
@@ -85,6 +96,55 @@ async function fetchAllData() {
     } finally {
         showLoading(false);
     }
+}
+
+// 抱負のレンダリング
+function renderResolutions(goals) {
+    const container = document.querySelector('.resolutions-container');
+
+    if (!goals || goals.length === 0) {
+        container.innerHTML = '<div class="no-data">目標が設定されていません。<br>スプレッドシートの "Goals" タブに入力してください。</div>';
+        return;
+    }
+
+    container.innerHTML = ''; // クリア
+
+    goals.forEach(goal => {
+        // 具体的なアクション（改行や中黒区切りをリスト化）
+        // スプレッドシートで "・アクション1\n・アクション2" のように書かれていることを想定
+        const actionsHtml = goal.detail.split('\n').map(line => {
+            const cleanLine = line.replace(/^[・-]\s*/, ''); // 先頭の記号を削除
+            return cleanLine ? `<li>${cleanLine}</li>` : '';
+        }).join('');
+
+        const card = document.createElement('div');
+        card.className = `resolution-card ${goal.color || 'gray'}`;
+        card.onclick = function () { toggleResolution(this); };
+
+        card.innerHTML = `
+            <div class="card-main">
+                <div class="icon-wrapper">${goal.icon || '🎯'}</div>
+                <div class="header-content">
+                    <h3>${goal.category}</h3>
+                    <p class="main-goal">${goal.title}</p>
+                </div>
+                <div class="toggle-icon">▼</div>
+            </div>
+            <div class="card-details">
+                <div class="detail-block">
+                    <h4>🎯 具体的なアクション</h4>
+                    <ul>
+                        ${actionsHtml}
+                    </ul>
+                </div>
+                <div class="detail-block">
+                    <h4>💭 意識すること</h4>
+                    <p>${goal.mindset}</p>
+                </div>
+            </div>
+        `;
+        container.appendChild(card);
+    });
 }
 
 async function syncData(dateKey, dayData) {
@@ -484,7 +544,7 @@ function toggleResolution(card) {
     document.querySelectorAll('.resolution-card.active').forEach(c => {
         if (c !== card) c.classList.remove('active');
     });
-    
+
     // クリックされたカードの開閉
     card.classList.toggle('active');
 }
