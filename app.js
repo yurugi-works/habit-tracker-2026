@@ -62,8 +62,19 @@ async function fetchAllData() {
     showLoading(true);
     try {
         const response = await fetch(API_URL);
-        const data = await response.json();
-        cachedData = data;
+        const rawData = await response.json();
+
+        // 日付キーの正規化 (Thu Jan 01 2026... -> 2026-01-01)
+        const normalizedData = {};
+        for (const [key, value] of Object.entries(rawData)) {
+            const date = new Date(key);
+            if (!isNaN(date.getTime())) {
+                const dateKey = getDateKey(date);
+                normalizedData[dateKey] = value;
+            }
+        }
+
+        cachedData = normalizedData;
         isDataLoaded = true;
         console.log('Data loaded:', cachedData);
         return cachedData;
