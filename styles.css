@@ -634,7 +634,7 @@ body {
 .resolutions-container {
     display: grid;
     gap: 16px;
-    padding-bottom: 24px;
+    padding-bottom: 32px;
 }
 
 .resolution-card {
@@ -643,83 +643,162 @@ body {
     overflow: hidden;
     box-shadow: var(--shadow);
     border: 1px solid var(--border-color);
-    transition: all 0.3s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
 }
 
 .resolution-card:hover {
-    transform: translateY(-4px);
+    transform: translateY(-2px);
     box-shadow: var(--shadow-lg);
 }
 
-.resolution-card .card-header {
+.resolution-card .card-main {
     padding: 16px;
     display: flex;
     align-items: center;
-    gap: 12px;
-    border-bottom: 1px solid var(--border-color);
+    gap: 16px;
+    background: var(--bg-card);
+    position: relative;
+    z-index: 10;
 }
 
-.resolution-card .card-header .icon {
+.resolution-card .icon-wrapper {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-secondary);
+    border-radius: 12px;
     font-size: 1.5rem;
 }
 
-.resolution-card .card-header h3 {
-    font-size: 1.1rem;
-    font-weight: 700;
+.resolution-card .header-content {
+    flex: 1;
 }
 
-.resolution-card .card-content {
+.resolution-card .header-content h3 {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+    font-weight: 500;
+}
+
+.resolution-card .header-content .main-goal {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.4;
+}
+
+.resolution-card .toggle-icon {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    transition: transform 0.3s ease;
+}
+
+/* 詳細エリア（アコーディオン） */
+.resolution-card .card-details {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out, opacity 0.3s ease;
+    opacity: 0;
+    background: var(--bg-secondary);
+    border-top: 1px solid var(--border-color);
+}
+
+.resolution-card.active .card-details {
+    max-height: 500px;
+    /* 十分な高さ */
+    opacity: 1;
     padding: 16px;
 }
 
-.resolution-card .goal {
-    font-size: 1rem;
-    margin-bottom: 12px;
-    padding-bottom: 12px;
-    border-bottom: 1px dashed var(--border-color);
+.resolution-card.active .toggle-icon {
+    transform: rotate(180deg);
 }
 
-.resolution-card .detail-list {
+.detail-block {
+    margin-bottom: 16px;
+}
+
+.detail-block:last-child {
+    margin-bottom: 0;
+}
+
+.detail-block h4 {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.detail-block ul {
     list-style: none;
     padding: 0;
 }
 
-.resolution-card .detail-list li {
+.detail-block ul li {
+    font-size: 0.95rem;
+    margin-bottom: 6px;
+    padding-left: 14px;
     position: relative;
-    padding-left: 20px;
-    margin-bottom: 8px;
-    font-size: 0.9rem;
-    color: var(--text-secondary);
+    line-height: 1.6;
 }
 
-.resolution-card .detail-list li::before {
-    content: '•';
+.detail-block ul li::before {
+    content: '';
     position: absolute;
-    left: 4px;
-    color: var(--accent-primary);
-    font-weight: bold;
+    left: 0;
+    top: 9px;
+    width: 6px;
+    height: 6px;
+    background: var(--accent-primary);
+    border-radius: 50%;
 }
 
-/* カテゴリ別カラー */
-.resolution-card.career .card-header { background: linear-gradient(135deg, #e0f2fe, #f0f9ff); border-bottom-color: #bae6fd; }
-.resolution-card.career .card-header h3 { color: #0284c7; }
+.detail-block p {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.5);
+    padding: 12px;
+    border-radius: 8px;
+    border-left: 3px solid var(--accent-primary);
+}
 
-.resolution-card.skills .card-header { background: linear-gradient(135deg, #fae8ff, #fdf4ff); border-bottom-color: #f0abfc; }
-.resolution-card.skills .card-header h3 { color: #aaa201; /* Fallback for yellow text visibility */ color: #d97706; } /* Adjusted for better contrast: Amber */
+/* カテゴリ別スタイル (アクセントカラー調整) */
+.resolution-card.career .icon-wrapper {
+    background: #e0f2fe;
+    color: #0284c7;
+}
 
-.resolution-card.skills .card-header h3 { color: #a21caf; } /* Purple */
+.resolution-card.skills .icon-wrapper {
+    background: #fae8ff;
+    color: #a21caf;
+}
 
-.resolution-card.health .card-header { background: linear-gradient(135deg, #dcfce7, #f0fdf4); border-bottom-color: #86efac; }
-.resolution-card.health .card-header h3 { color: #15803d; }
+.resolution-card.health .icon-wrapper {
+    background: #dcfce7;
+    color: #16a34a;
+}
 
-.resolution-card.hobby .card-header { background: linear-gradient(135deg, #fce7f3, #fdf2f8); border-bottom-color: #fca5a5; }
-.resolution-card.hobby .card-header h3 { color: #be185d; }
+.resolution-card.hobby .icon-wrapper {
+    background: #fce7f3;
+    color: #db2777;
+}
 
-.resolution-card.money .card-header { background: linear-gradient(135deg, #fef3c7, #fffbeb); border-bottom-color: #fde68a; }
-.resolution-card.money .card-header h3 { color: #b45309; }
+.resolution-card.money .icon-wrapper {
+    background: #fef3c7;
+    color: #d97706;
+}
 
-.resolution-card.relationship .card-header { background: linear-gradient(135deg, #ffedd5, #fff7ed); border-bottom-color: #fdba74; }
-.resolution-card.relationship .card-header h3 { color: #c2410c; }
+.resolution-card.relationship .icon-wrapper {
+    background: #ffedd5;
+    color: #ea580c;
+}
 
 
 /* ===================================
@@ -748,8 +827,13 @@ body {
 }
 
 @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 /* ===================================

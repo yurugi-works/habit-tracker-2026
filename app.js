@@ -472,6 +472,16 @@ function switchView(viewName) {
     }
 }
 
+function toggleResolution(card) {
+    // 他の開いているカードを閉じる（アコーディオン挙動）
+    document.querySelectorAll('.resolution-card.active').forEach(c => {
+        if (c !== card) c.classList.remove('active');
+    });
+    
+    // クリックされたカードの開閉
+    card.classList.toggle('active');
+}
+
 // ===================================
 // トースト通知
 // ===================================
