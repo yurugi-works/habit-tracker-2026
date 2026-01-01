@@ -91,11 +91,18 @@ async function syncData(dateKey, dayData) {
     // まずキャッシュを即時更新（楽観的UI更新）
     cachedData[dateKey] = dayData;
 
+    // 全習慣IDについて true/false を明確にする
+    const completeHabits = {};
+    HABITS.forEach(h => {
+        // 既存の値があればそれを使う、なければ false
+        completeHabits[h.id] = !!dayData.habits[h.id];
+    });
+
     // バックグラウンドで送信
     try {
         const payload = {
             date: dateKey,
-            habits: dayData.habits,
+            habits: completeHabits,
             reflection: dayData.reflection
         };
 

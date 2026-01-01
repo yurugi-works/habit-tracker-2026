@@ -33,27 +33,28 @@ function doPost(e) {
     const rows = sheet.getDataRange().getValues();
     let rowIndex = -1;
     
-    // 既存の日付を探す
+    // 既存の日付を探す（日付比較を強化）
     for (let i = 1; i < rows.length; i++) {
-      if (rows[i][0] === dateKey || String(rows[i][0]) === dateKey) {
+      const rowDateVal = rows[i][0];
+      let rowDateStr = "";
+      
+      // シートの日付を "YYYY-MM-DD" 形式の文字列に変換して比較
+      if (rowDateVal instanceof Date) {
+        rowDateStr = Utilities.formatDate(rowDateVal, 'Asia/Tokyo', 'yyyy-MM-dd');
+      } else {
+        // 文字列などの場合も、Dateにしてからフォーマットするか、そのまま比較
+        const parsed = new Date(rowDateVal);
+        if (!isNaN(parsed)) {
+          rowDateStr = Utilities.formatDate(parsed, 'Asia/Tokyo', 'yyyy-MM-dd');
+        } else {
+          rowDateStr = String(rowDateVal);
+        }
+      }
+
+      if (rowDateStr === dateKey) {
         rowIndex = i + 1; // 1始まりの行番号
         break;
       }
-    }
-    
-    // 行が見つからなければ、日付オブジェクトとして比較してみる（GASの自動変換対策）
-    if (rowIndex === -1) {
-       for (let i = 1; i < rows.length; i++) {
-         const rowDate = new Date(rows[i][0]);
-         const targetDate = new Date(dateKey);
-         if (!isNaN(rowDate) && !isNaN(targetDate) && 
-             rowDate.getFullYear() === targetDate.getFullYear() &&
-             rowDate.getMonth() === targetDate.getMonth() &&
-             rowDate.getDate() === targetDate.getDate()) {
-             rowIndex = i + 1;
-             break;
-         }
-       }
     }
     
     if (rowIndex > 0) {
@@ -78,26 +79,117 @@ function doPost(e) {
 // Googleチャット通知機能
 // ==========================================
 
-// 1. Googleチャットのスペース設定で「Webhookを管理」からURLを取得してここに貼る
-const WEBHOOK_URL = 'ここにWEBHOOK_URLを貼り付けてください';
+// 1. Googleチャットのスペース設定で「Webhookを管理」からURLを取得
+// 2. GASのエディタ左側「プロジェクトの設定」>「スクリプトプロパティ」に以下のキーと値を追加してください
+//    プロパティ: WEBHOOK_URL
+//    値: (取得したWebhook URL)
+const WEBHOOK_URL = PropertiesService.getScriptProperties().getProperty('WEBHOOK_URL');
+const GEMINI_API_KEY = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
 
 // アプリのURL
 const APP_URL = 'https://yurugi-works.github.io/habit-tracker-2026/';
 
 // 毎朝の通知（トリガー設定が必要）
+// 習慣の定義（app.jsと同じIDとラベル）
+const HABIT_DEFS = {
+  'study': '勉強',
+  'exercise': '運動',
+  'weight': '体重測定',
+  'sideproject': '副業開発',
+  'work': '仕事で成果',
+  'finance': '家計簿'
+};
+
+// 毎朝の通知（トリガー設定が必要）
 function sendMorningNotification() {
-  if (WEBHOOK_URL.includes('ここに')) return; // 設定されていなければ終了
+  if (!WEBHOOK_URL) {
+    console.error('エラー: スクリプトプロパティ "WEBHOOK_URL" が設定されていません。');
+    return;
+  }
 
   const today = new Date();
-  const dateStr = Utilities.formatDate(today, 'Asia/Tokyo', 'MM/dd');
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
   
-  // ランダムな抱負を選ぶ
+  const dateStr = Utilities.formatDate(today, 'Asia/Tokyo', 'MM/dd');
+  const yesterdayStr = Utilities.formatDate(yesterday, 'Asia/Tokyo', 'yyyy-MM-dd'); // 検索用
+  
+  // 昨日のデータを確認
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  const rows = sheet.getDataRange().getValues();
+  let yesterdayHabits = null;
+  let yesterdayReflection = "";
+
+  // 1行目(ヘッダー)以降を後ろから検索
+  for (let i = rows.length - 1; i >= 1; i--) {
+     const rowDateVal = rows[i][0];
+     let rowDateStr = "";
+     if (rowDateVal instanceof Date) {
+       rowDateStr = Utilities.formatDate(rowDateVal, 'Asia/Tokyo', 'yyyy-MM-dd');
+     } else {
+       rowDateStr = String(rowDateVal);
+     }
+
+     if (rowDateStr === yesterdayStr) {
+       try {
+         yesterdayHabits = JSON.parse(rows[i][1]); // B列: Habits JSON
+       } catch (e) {
+         yesterdayHabits = {};
+       }
+       yesterdayReflection = rows[i][2] || ""; // C列: Reflection
+       break;
+     }
+  }
+
+  // メッセージの作成
+  let mainMessage = "";
+  let subMessage = "";
+  
+  // 未達成の習慣・達成した習慣を整理
+  const missedHabits = [];
+  const completedHabits = [];
+  
+  if (yesterdayHabits) {
+    Object.keys(HABIT_DEFS).forEach(key => {
+      if (!yesterdayHabits[key]) {
+        missedHabits.push(HABIT_DEFS[key]);
+      } else {
+        completedHabits.push(HABIT_DEFS[key]);
+      }
+    });
+  }
+
+  // Gemini呼び出し
+  let geminiMessage = null;
+  if (GEMINI_API_KEY) {
+    geminiMessage = getGeminiAdvice(yesterdayStr, completedHabits, missedHabits, yesterdayReflection);
+  }
+
+  if (geminiMessage) {
+    // Geminiのメッセージを採用
+    mainMessage = geminiMessage;
+  } else {
+    // フォールバック（以前のロジック）
+    if (!yesterdayHabits) {
+      mainMessage = "おはようございます！昨日の記録がありませんでした😢\n今日は記録をつけるところから始めましょう！";
+    } else {
+      if (missedHabits.length === 0) {
+        mainMessage = "おはようございます！\n昨日は**パーフェクト達成**でしたね！🎉素晴らしいです。\nこの調子で今日も積み上げましょう！";
+      } else if (missedHabits.length === Object.keys(HABIT_DEFS).length) {
+        mainMessage = "おはようございます。\n昨日は習慣チェックが0でした...。\n「まずは1つ」からで大丈夫。今日こそリスタートしましょう！💪";
+      } else {
+        mainMessage = `おはようございます！\n昨日は **${missedHabits.join('、')}** ができませんでしたね。\n今日はこれらを優先して、昨日の分を取り返しましょう！🔥`;
+      }
+    }
+  }
+
+  // ランダムな一言（固定のアドバイス）
   const resolutions = [
-    "🔥 コンサルタント昇格に向けて、今日のタスクで+αの価値を出そう！",
-    "📚 ITストラテジスト合格へ、10分でも勉強時間を確保！",
-    "💪 体重75kgへの道！今日の食事と運動を意識しよう。",
-    "💰 毎日資産チェック！お金の流れを把握できていますか？",
-    "🤝 周りの人への感謝を忘れずに。ワクワクする関係を作ろう。"
+    "🔥 コンサルタント昇格に向けて、アウトプットを意識！",
+    "📚 ITストラテジスト、1問でも解けば前進です。",
+    "💪 体重75kgへの道は一日にして成らず。",
+    "💰 資産形成は「使わないこと」から。",
+    "🤝 誰かの役に立つことが、自分の価値になる。"
   ];
   const randomResolution = resolutions[Math.floor(Math.random() * resolutions.length)];
 
@@ -106,21 +198,21 @@ function sendMorningNotification() {
       {
         "header": {
           "title": `🎍 ${dateStr} 今日の習慣チェック`,
-          "subtitle": "2026年の目標達成に向けて"
+          "subtitle": "AIコーチからのアドバイス"
         },
         "sections": [
           {
             "widgets": [
               {
                 "textParagraph": {
-                  "text": `おはようございます！今日も一日積み上げましょう。\n\n**今日の意識:**\n${randomResolution}`
+                  "text": `${mainMessage}\n\n**今日の意識:**\n${randomResolution}`
                 }
               },
               {
                 "buttons": [
                   {
                     "textButton": {
-                      "text": "アプリを開いてチェック",
+                      "text": "アプリを開く",
                       "onClick": {
                         "openLink": {
                           "url": APP_URL
@@ -142,7 +234,7 @@ function sendMorningNotification() {
 
 // 毎晩の未達成通知（トリガー設定が必要）
 function sendEveningReminder() {
-  if (WEBHOOK_URL.includes('ここに')) return;
+  if (!WEBHOOK_URL) return;
 
   // 今日のデータを取得して未達成なら通知...の実装は少し複雑になるため
   // まずはシンプルなリマインダーを送る
@@ -161,4 +253,93 @@ function sendToChat(payload) {
     "payload": JSON.stringify(payload)
   };
   UrlFetchApp.fetch(WEBHOOK_URL, options);
+}
+
+// Gemini APIを叩いてアドバイスを取得する関数
+function getGeminiAdvice(dateVal, completed, missed, reflection) {
+  // モデル名を変更 (gemini-2.5-flash -> gemma-3-27b-it)
+  // ※ リストにある gemma-3-27b のインストラクションチューニング版を指定
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemma-3-27b-it:generateContent?key=${GEMINI_API_KEY}`;
+  
+  const systemPrompt = `
+あなたはユーザーの習慣形成を支援する親身なAIコーチです。
+ユーザーの昨日の実績データと、ユーザー自身が書いた振り返りコメントをもとに、今日のやる気を引き出す短いメッセージ（140文字程度）を作成してください。
+
+# ユーザーの状況
+- 達成した習慣: ${completed.length > 0 ? completed.join(', ') : 'なし'}
+- 未達成の習慣: ${missed.length > 0 ? missed.join(', ') : 'すべて'}
+- 昨日のユーザーのコメント: "${reflection ? reflection : '（コメントなし）'}"
+
+# 指示
+- ユーザーのコメントがある場合は、必ずその内容に触れて共感したり反応したりしてください。
+- 未達成の習慣がある場合は、それを責めるのではなく「じゃあ今日はこれを一つだけ頑張ろう」と具体的に励ましてください。
+- 絵文字を適度に使って、明るくフレンドリーな口調で話しかけてください。
+- 冒頭の挨拶（おはようございます等）は不要です。本文だけ出力してください。
+`;
+
+  const payload = {
+    "contents": [{
+      "parts": [{"text": systemPrompt}]
+    }]
+  };
+
+  try {
+    const options = {
+      "method": "post",
+      "contentType": "application/json",
+      "payload": JSON.stringify(payload),
+      "muteHttpExceptions": true
+    };
+    
+    const response = UrlFetchApp.fetch(url, options);
+    const code = response.getResponseCode();
+    
+    if (code === 200) {
+      const json = JSON.parse(response.getContentText());
+      const text = json.candidates[0].content.parts[0].text;
+      return text.trim(); // 成功
+    } else {
+      console.error(`Gemini API Error: ${code} - ${response.getContentText()}`);
+      return null; // 失敗
+    }
+  } catch (e) {
+    console.error(`Gemini API Exception: ${e.toString()}`);
+    return null;
+  }
+}
+
+// ==========================================
+// トリガー設定用関数
+// ==========================================
+
+// この関数を一度だけ実行してください。
+// 既存のトリガーを削除し、新しい朝(7時)と夜(22時)のトリガーを設定します。
+function setupTriggers() {
+  const triggers = ScriptApp.getProjectTriggers();
+  
+  // 重複防止のため、既存の同名トリガーを削除
+  triggers.forEach(trigger => {
+    const handlerName = trigger.getHandlerFunction();
+    if (handlerName === 'sendMorningNotification' || handlerName === 'sendEveningReminder') {
+      ScriptApp.deleteTrigger(trigger);
+    }
+  });
+
+  // 朝の通知: 毎日 7:00 - 8:00 の間
+  ScriptApp.newTrigger('sendMorningNotification')
+    .timeBased()
+    .atHour(7)
+    .everyDays(1)
+    .inTimezone('Asia/Tokyo')
+    .create();
+
+  // 夜のリマインダー: 毎日 22:00 - 23:00 の間
+  ScriptApp.newTrigger('sendEveningReminder')
+    .timeBased()
+    .atHour(22)
+    .everyDays(1)
+    .inTimezone('Asia/Tokyo')
+    .create();
+    
+  console.log('トリガーの設定が完了しました。朝7時と夜22時に通知が届きます。');
 }
