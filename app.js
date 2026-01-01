@@ -47,33 +47,83 @@ function getFirstDayOfMonth(year, month) {
     return new Date(year, month, 1).getDay();
 }
 
+// Google Sheets API URL
+const API_URL = 'https://script.google.com/macros/s/AKfycbzG_WauQz856-vr0S9yimRLMH-7yFJAKx4toBSQVXkTH_HfWb8MSc7n3DlXaNeKviEmjg/exec';
+
+// キャッシュ用データ
+let cachedData = {};
+let isDataLoaded = false;
+
 // ===================================
-// ストレージ操作
+// データ通信処理
 // ===================================
 
-function loadData() {
-    const data = localStorage.getItem('habitTracker2026');
-    return data ? JSON.parse(data) : {};
+async function fetchAllData() {
+    showLoading(true);
+    try {
+        const response = await fetch(API_URL);
+        const data = await response.json();
+        cachedData = data;
+        isDataLoaded = true;
+        console.log('Data loaded:', cachedData);
+        return cachedData;
+    } catch (error) {
+        console.error('Error fetching data:', error);
+        showToast('データの読み込みに失敗しました', 'error');
+        return {};
+    } finally {
+        showLoading(false);
+    }
 }
 
-function saveData(data) {
-    localStorage.setItem('habitTracker2026', JSON.stringify(data));
+async function syncData(dateKey, dayData) {
+    // まずキャッシュを即時更新（楽観的UI更新）
+    cachedData[dateKey] = dayData;
+
+    // バックグラウンドで送信
+    try {
+        const payload = {
+            date: dateKey,
+            habits: dayData.habits,
+            reflection: dayData.reflection
+        };
+
+        await fetch(API_URL, {
+            method: 'POST',
+            mode: 'no-cors', // CORS回避のためno-cors（レスポンスは読めないが送信はできる）
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        });
+        console.log('Data synced for', dateKey);
+    } catch (error) {
+        console.error('Error syncing data:', error);
+        showToast('保存に失敗しました。ネット接続を確認してください', 'error');
+    }
 }
 
 function getDayData(dateKey) {
-    const data = loadData();
-    return data[dateKey] || { habits: {}, reflection: '' };
+    return cachedData[dateKey] || { habits: {}, reflection: '' };
 }
 
-function saveDayData(dateKey, dayData) {
-    const data = loadData();
-    data[dateKey] = dayData;
-    saveData(data);
+// 読み込み中表示
+function showLoading(isLoading) {
+    const loader = document.getElementById('loader');
+    if (isLoading) {
+        if (!loader) createLoader();
+        document.getElementById('loader').style.display = 'flex';
+    } else {
+        if (loader) loader.style.display = 'none';
+    }
 }
 
-// ===================================
-// アプリケーション状態
-// ===================================
+function createLoader() {
+    const div = document.createElement('div');
+    div.id = 'loader';
+    div.innerHTML = '<div class="spinner"></div>';
+    document.body.appendChild(div);
+}
 
 let currentDate = new Date();
 let currentMonth = new Date();
@@ -110,8 +160,11 @@ function toggleHabit(habitId) {
     const dateKey = getDateKey(currentDate);
     const dayData = getDayData(dateKey);
 
+    // habitsオブジェクトがない場合の初期化
+    if (!dayData.habits) dayData.habits = {};
+
     dayData.habits[habitId] = !dayData.habits[habitId];
-    saveDayData(dateKey, dayData);
+    syncData(dateKey, dayData);
 
     renderChecklist();
 }
@@ -142,7 +195,7 @@ function saveReflection() {
     const dateKey = getDateKey(currentDate);
     const dayData = getDayData(dateKey);
     dayData.reflection = document.getElementById('reflection-text').value;
-    saveDayData(dateKey, dayData);
+    syncData(dateKey, dayData);
     showToast('保存しました！');
 }
 
@@ -265,7 +318,6 @@ function renderCalendar() {
 }
 
 function renderStats() {
-    const data = loadData();
     const year = currentMonth.getFullYear();
     const month = currentMonth.getMonth();
     const daysInMonth = getDaysInMonth(year, month);
@@ -281,7 +333,9 @@ function renderStats() {
 
         const dateKey = getDateKey(date);
         const dayData = getDayData(dateKey);
-        const completed = HABITS.filter(h => dayData.habits[h.id]).length;
+        // habitsが未定義の場合のガード
+        const habits = dayData.habits || {};
+        const completed = HABITS.filter(h => habits[h.id]).length;
 
         if (completed > 0) activeDays++;
         if (completed === HABITS.length) perfectDays++;
@@ -316,7 +370,6 @@ function renderComments() {
     const year = currentMonth.getFullYear();
     const month = currentMonth.getMonth();
     const daysInMonth = getDaysInMonth(year, month);
-    const data = loadData();
     const today = new Date();
 
     let commentsHtml = '';
@@ -332,7 +385,8 @@ function renderComments() {
 
         if (dayData.reflection && dayData.reflection.trim()) {
             hasComments = true;
-            const completed = HABITS.filter(h => dayData.habits[h.id]).length;
+            const habits = dayData.habits || {};
+            const completed = HABITS.filter(h => habits[h.id]).length;
             const total = HABITS.length;
             const dateStr = `${month + 1}/${day}（${WEEKDAYS[date.getDay()]}）`;
 
@@ -436,7 +490,7 @@ function showToast(message) {
 // 初期化
 // ===================================
 
-function init() {
+async function init() {
     // 今日の日付を設定
     currentDate = new Date();
     currentMonth = new Date();
@@ -451,6 +505,9 @@ function init() {
     document.getElementById('prev-month').addEventListener('click', goToPrevMonth);
     document.getElementById('next-month').addEventListener('click', goToNextMonth);
     document.getElementById('save-reflection').addEventListener('click', saveReflection);
+
+    // データ読み込み
+    await fetchAllData();
 
     // 初期表示
     refreshTodayView();
