@@ -1,5 +1,8 @@
 # 🎍 Habit Tracker 2026 - Project Context & Handover
 
+> [!IMPORTANT]
+> **LANGUAGE RULE**: All artifacts (plans, walkthroughs, docs) and agent responses MUST be written in **Japanese**.
+
 ## 📌 プロジェクト概要
 2026年の新年の抱負を達成するための、モバイルフレンドリーな習慣トラッカーWebアプリ。
 「毎日コツコツ」をテーマに、習慣のチェック、日々の振り返り、月間の履歴確認ができる。

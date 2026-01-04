@@ -96,6 +96,26 @@
                 <div class="loading-goals">データ読み込み中...</div>
             </div>
         </div>
+        <!-- 目標コンディション編集モーダル -->
+        <div id="condition-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>🛠 コンディション編集</h3>
+                    <button class="close-modal" id="close-condition-modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p class="modal-desc">
+                        怪我や多忙など、AIに伝えたい状況を入力してください。<br>
+                        <small>※ この内容はAIのアドバイスに反映されます。</small>
+                    </p>
+                    <textarea id="condition-limit" placeholder="例: 右足首を捻挫したため、今週はランニング中止。"></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn-cancel" id="cancel-condition">キャンセル</button>
+                    <button class="btn-save" id="save-condition">保存して更新</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="app.js"></script>

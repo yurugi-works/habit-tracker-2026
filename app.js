@@ -121,12 +121,18 @@ function renderResolutions(goals) {
         card.className = `resolution-card ${goal.color || 'gray'}`;
         card.onclick = function () { toggleResolution(this); };
 
+        // コンディション表示用バッジ
+        const conditionHtml = goal.condition
+            ? `<div class="condition-badge">⚠️ ${goal.condition}</div>`
+            : '';
+
         card.innerHTML = `
             <div class="card-main">
                 <div class="icon-wrapper">${goal.icon || '🎯'}</div>
                 <div class="header-content">
                     <h3>${goal.category}</h3>
                     <p class="main-goal">${goal.title}</p>
+                    ${conditionHtml}
                 </div>
                 <div class="toggle-icon">▼</div>
             </div>
@@ -140,6 +146,11 @@ function renderResolutions(goals) {
                 <div class="detail-block">
                     <h4>💭 意識すること</h4>
                     <p>${goal.mindset}</p>
+                </div>
+                <div class="resolution-actions">
+                    <button class="btn-edit-condition" onclick="event.stopPropagation(); openConditionModal('${goal.category}', '${goal.title}', '${goal.condition || ''}')">
+                        ✎ コンディション編集
+                    </button>
                 </div>
             </div>
         `;
@@ -578,6 +589,73 @@ function showToast(message) {
 // 初期化
 // ===================================
 
+// ===================================
+// コンディション編集モーダル機能
+// ===================================
+
+let editingGoal = { category: '', title: '' };
+
+function openConditionModal(category, title, currentCondition) {
+    editingGoal = { category, title };
+    const modal = document.getElementById('condition-modal');
+    const textarea = document.getElementById('condition-limit');
+
+    textarea.value = currentCondition || '';
+    modal.style.display = 'flex';
+    requestAnimationFrame(() => modal.classList.add('show'));
+}
+
+function closeConditionModal() {
+    const modal = document.getElementById('condition-modal');
+    modal.classList.remove('show');
+    setTimeout(() => {
+        modal.style.display = 'none';
+        editingGoal = { category: '', title: '' };
+    }, 300);
+}
+
+async function saveCondition() {
+    const condition = document.getElementById('condition-limit').value;
+    const { category, title } = editingGoal;
+
+    if (!category || !title) return;
+
+    showLoading(true);
+    closeConditionModal();
+
+    try {
+        const payload = {
+            action: 'updateCondition',
+            category: category,
+            title: title,
+            condition: condition
+        };
+
+        await fetch(API_URL, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        showToast('更新しました！反映まで数秒かかります...');
+
+        setTimeout(async () => {
+            await fetchAllData();
+        }, 2000);
+
+    } catch (error) {
+        console.error('Update failed:', error);
+        showToast('更新に失敗しました', 'error');
+    } finally {
+        showLoading(false);
+    }
+}
+
+// ===================================
+// 初期化
+// ===================================
+
 async function init() {
     // 今日の日付を設定
     currentDate = new Date();
@@ -593,6 +671,24 @@ async function init() {
     document.getElementById('prev-month').addEventListener('click', goToPrevMonth);
     document.getElementById('next-month').addEventListener('click', goToNextMonth);
     document.getElementById('save-reflection').addEventListener('click', saveReflection);
+
+    // モーダル用リスナー
+    const closeModalBtn = document.getElementById('close-condition-modal');
+    if (closeModalBtn) closeModalBtn.addEventListener('click', closeConditionModal);
+
+    const cancelModalBtn = document.getElementById('cancel-condition');
+    if (cancelModalBtn) cancelModalBtn.addEventListener('click', closeConditionModal);
+
+    const saveModalBtn = document.getElementById('save-condition');
+    if (saveModalBtn) saveModalBtn.addEventListener('click', saveCondition);
+
+    // モーダル外クリックで閉じる
+    const modal = document.getElementById('condition-modal');
+    if (modal) {
+        modal.addEventListener('click', (e) => {
+            if (e.target.id === 'condition-modal') closeConditionModal();
+        });
+    }
 
     // データ読み込み
     await fetchAllData();
