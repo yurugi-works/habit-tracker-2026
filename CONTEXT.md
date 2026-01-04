@@ -1,4 +1,11 @@
-# 🎍 Habit Tracker 2026 - Project Context & Handover
+# プロジェクト概要: Habit Tracker 2026
+
+## Project Rules (Strict)
+1. **Language**: All artifacts (documentation, code comments, commit messages) MUST be written in **Japanese**.
+   - アーティファクト（動くコード以外のドキュメントやコメント）は全て日本語で記述すること。
+2. **Deployment**: Frontend is on GitHub Pages, Backend is Google Apps Script (API).
+
+## 概要- Project Context & Handover
 
 > [!IMPORTANT]
 > **LANGUAGE RULE**: All artifacts (plans, walkthroughs, docs) and agent responses MUST be written in **Japanese**.

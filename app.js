@@ -8,7 +8,7 @@ const HABITS = [
     { id: 'exercise', icon: '💪', label: '運動' },
     { id: 'weight', icon: '⚖️', label: '体重測定' },
     { id: 'sideproject', icon: '💻', label: '副業開発' },
-    { id: 'work', icon: '🏢', label: '仕事で成果' },
+    { id: 'work', icon: '🏢', label: '最重要タスク完了' },
     { id: 'finance', icon: '💰', label: '家計簿チェック' }
 ];
 
