@@ -116,6 +116,34 @@
                 </div>
             </div>
         </div>
+
+        <!-- 目標内容編集モーダル -->
+        <div id="goal-edit-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>📝 目標内容の編集</h3>
+                    <button class="close-modal" id="close-goal-edit-modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>目標タイトル</label>
+                        <input type="text" id="goal-title-input" placeholder="例: 毎日英語を勉強する">
+                    </div>
+                    <div class="form-group">
+                        <label>具体的なアクション <small>(改行で複数入力)</small></label>
+                        <textarea id="goal-detail-input" placeholder="例: ・単語帳を1ページ進める&#13;&#10;・英語ニュースを1つ読む"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>意識すること</label>
+                        <textarea id="goal-mindset-input" placeholder="例: 完璧を目指さず、継続を最優先にする"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn-cancel" id="cancel-goal-edit">キャンセル</button>
+                    <button class="btn-save" id="save-goal-content">保存して更新</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="app.js"></script>

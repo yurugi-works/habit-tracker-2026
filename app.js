@@ -52,6 +52,7 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbzG_WauQz856-vr0S9yimRL
 
 // キャッシュ用データ
 let cachedData = {};
+let cachedGoals = []; // 目標データのキャッシュ
 let isDataLoaded = false;
 
 // ===================================
@@ -72,8 +73,8 @@ async function fetchAllData() {
             cachedData = json.records;
 
             // 目標データのレンダリング
-            const goals = json.goals || [];
-            renderResolutions(goals);
+            cachedGoals = json.goals || [];
+            renderResolutions(cachedGoals);
         } else {
             // 旧形式のフォールバック
             cachedData = json;
@@ -99,6 +100,7 @@ async function fetchAllData() {
 }
 
 // 抱負のレンダリング
+// 抱負のレンダリング
 function renderResolutions(goals) {
     const container = document.querySelector('.resolutions-container');
 
@@ -109,12 +111,11 @@ function renderResolutions(goals) {
 
     container.innerHTML = ''; // クリア
 
-    goals.forEach(goal => {
+    goals.forEach((goal, index) => {
         // 具体的なアクション（改行や中黒区切りをリスト化）
-        // スプレッドシートで "・アクション1\n・アクション2" のように書かれていることを想定
-        const actionsHtml = goal.detail.split('\n').map(line => {
+        const actionsHtml = (goal.detail || '').split('\n').map(line => {
             const cleanLine = line.replace(/^[・-]\s*/, ''); // 先頭の記号を削除
-            return cleanLine ? `<li>${cleanLine}</li>` : '';
+            return cleanLine ? `<li>${escapeHtml(cleanLine)}</li>` : '';
         }).join('');
 
         const card = document.createElement('div');
@@ -123,15 +124,20 @@ function renderResolutions(goals) {
 
         // コンディション表示用バッジ
         const conditionHtml = goal.condition
-            ? `<div class="condition-badge">⚠️ ${goal.condition}</div>`
+            ? `<div class="condition-badge">⚠️ ${escapeHtml(goal.condition)}</div>`
             : '';
+
+        // JS引数用にエスケープ (シングルクォートとバックスラッシュをエスケープ)
+        const safeCat = (goal.category || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        const safeTitle = (goal.title || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        const safeCond = (goal.condition || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 
         card.innerHTML = `
             <div class="card-main">
                 <div class="icon-wrapper">${goal.icon || '🎯'}</div>
                 <div class="header-content">
-                    <h3>${goal.category}</h3>
-                    <p class="main-goal">${goal.title}</p>
+                    <h3>${escapeHtml(goal.category)}</h3>
+                    <p class="main-goal">${escapeHtml(goal.title)}</p>
                     ${conditionHtml}
                 </div>
                 <div class="toggle-icon">▼</div>
@@ -145,11 +151,15 @@ function renderResolutions(goals) {
                 </div>
                 <div class="detail-block">
                     <h4>💭 意識すること</h4>
-                    <p>${goal.mindset}</p>
+                    <p>${escapeHtml(goal.mindset)}</p>
                 </div>
                 <div class="resolution-actions">
-                    <button class="btn-edit-condition" onclick="event.stopPropagation(); openConditionModal('${goal.category}', '${goal.title}', '${goal.condition || ''}')">
-                        ✎ コンディション編集
+                    <button class="btn-edit-condition" onclick="event.stopPropagation(); openGoalEditModal('${safeCat}', '${safeTitle}')">
+                        📝 内容編集
+                    </button>
+                    &nbsp;&nbsp;
+                    <button class="btn-edit-condition" onclick="event.stopPropagation(); openConditionModal('${safeCat}', '${safeTitle}', '${safeCond}')">
+                        ⚠️ コンディション編集
                     </button>
                 </div>
             </div>
@@ -653,6 +663,83 @@ async function saveCondition() {
 }
 
 // ===================================
+// 目標内容編集モーダル機能
+// ===================================
+
+let editingGoalContent = { category: '', currentTitle: '' };
+
+function openGoalEditModal(category, title) {
+    editingGoalContent = { category, currentTitle: title };
+
+    // 現在の目標データを検索
+    const goal = cachedGoals.find(g => g.category === category && g.title === title);
+    if (!goal) return;
+
+    const modal = document.getElementById('goal-edit-modal');
+    document.getElementById('goal-title-input').value = goal.title || '';
+    document.getElementById('goal-detail-input').value = goal.detail || '';
+    document.getElementById('goal-mindset-input').value = goal.mindset || '';
+
+    modal.style.display = 'flex';
+    requestAnimationFrame(() => modal.classList.add('show'));
+}
+
+function closeGoalEditModal() {
+    const modal = document.getElementById('goal-edit-modal');
+    modal.classList.remove('show');
+    setTimeout(() => {
+        modal.style.display = 'none';
+        editingGoalContent = { category: '', currentTitle: '' };
+    }, 300);
+}
+
+async function saveGoalContent() {
+    const newTitle = document.getElementById('goal-title-input').value;
+    const detail = document.getElementById('goal-detail-input').value;
+    const mindset = document.getElementById('goal-mindset-input').value;
+    const { category, currentTitle } = editingGoalContent;
+
+    if (!category || !currentTitle || !newTitle) {
+        showToast('タイトルは必須です', 'error');
+        return;
+    }
+
+    showLoading(true);
+    closeGoalEditModal();
+
+    try {
+        const payload = {
+            action: 'updateGoalContent',
+            category: category,
+            currentTitle: currentTitle,
+            newTitle: newTitle,
+            detail: detail,
+            mindset: mindset
+        };
+
+        await fetch(API_URL, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        showToast('更新しました！');
+
+        // 再取得
+        setTimeout(async () => {
+            await fetchAllData();
+        }, 2000);
+
+    } catch (error) {
+        console.error('Update failed:', error);
+        showToast('更新に失敗しました', 'error');
+    } finally {
+        showLoading(false);
+    }
+}
+
+// ===================================
 // 初期化
 // ===================================
 
@@ -687,6 +774,23 @@ async function init() {
     if (modal) {
         modal.addEventListener('click', (e) => {
             if (e.target.id === 'condition-modal') closeConditionModal();
+        });
+    }
+
+    // 目標編集モーダル用リスナー
+    const closeGoalEditBtn = document.getElementById('close-goal-edit-modal');
+    if (closeGoalEditBtn) closeGoalEditBtn.addEventListener('click', closeGoalEditModal);
+
+    const cancelGoalEditBtn = document.getElementById('cancel-goal-edit');
+    if (cancelGoalEditBtn) cancelGoalEditBtn.addEventListener('click', closeGoalEditModal);
+
+    const saveGoalContentBtn = document.getElementById('save-goal-content');
+    if (saveGoalContentBtn) saveGoalContentBtn.addEventListener('click', saveGoalContent);
+
+    const goalEditModal = document.getElementById('goal-edit-modal');
+    if (goalEditModal) {
+        goalEditModal.addEventListener('click', (e) => {
+            if (e.target.id === 'goal-edit-modal') closeGoalEditModal();
         });
     }
 
